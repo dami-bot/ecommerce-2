@@ -1,0 +1,21 @@
+@import "tailwindcss";
+
+/* Tus animaciones personalizadas */
+@keyframes gridMove {
+  0% { background-position: 0 0; }
+  100% { background-position: 0 1000px; }
+}
+
+@keyframes pulseNeon {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.35; }
+}
+
+.animate-pulseNeon {
+  animation: pulseNeon 3s ease-in-out infinite;
+}
+
+/* Fondo global con tu gradiente */
+body {
+  @apply min-h-screen bg-gradient-to-br from-stone-900 via-stone-700 to-stone-300 text-gray-900;
+}
