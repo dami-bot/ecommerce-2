@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { ProductForm } from "../components/ProductForm";
 import { InventoryItem } from "../components/InventoryItem";
-import { uploadToCloudinary } from "../utils/cloudinary";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -12,74 +11,142 @@ export default function Inventario() {
   const [porcentaje, setPorcentaje] = useState("");
   const [productoEditando, setProductoEditando] = useState(null);
 
-  // Estado inicial para el formulario (limpio)
+  // NUEVOS ESTADOS DE CARGA
+  const [cargandoLista, setCargandoLista] = useState(false);
+  const [guardando, setGuardando] = useState(false);
+  const [actualizandoPrecios, setActualizandoPrecios] = useState(false);
+
   const [formValues, setFormValues] = useState({
-    nombre: "", stock: "", precio: "", vencimiento: "", ofertaDiaria: false, file: null
+    nombre: "",
+    stock: "",
+    precio: "",
+    vencimiento: "",
+    categoria: "", // ✅ Nueva categoría inicial
+    ofertaDiaria: false,
+    file: null
   });
 
-  // 1. Cargar Productos
   const cargarProductos = async () => {
+    setCargandoLista(true);
     try {
       const res = await fetch(`${API_URL}/api/productos`);
       const data = await res.json();
-      
       const hoy = new Date();
       const procesados = data.map(p => ({
         ...p,
-        cercaVencimiento: p.vencimiento && 
+        cercaVencimiento: p.vencimiento &&
           (new Date(p.vencimiento) - hoy) / (1000 * 60 * 60 * 24) <= 7
       }));
       setProductos(procesados);
-    } catch (err) { console.error("Error:", err); }
+    } catch (err) {
+      console.error("Error cargando productos:", err);
+    } finally {
+      setCargandoLista(false);
+    }
   };
 
   useEffect(() => { cargarProductos(); }, []);
 
-  // 2. Agregar o Editar Producto
+  const aplicarAumentoMasivo = async () => {
+    if (!porcentaje || isNaN(porcentaje)) return alert("Ingresá un porcentaje válido.");
+    const idsParaActualizar = productosFiltrados.map(p => p.id);
+    if (idsParaActualizar.length === 0) return alert("No hay productos filtrados.");
+
+    const confirmar = confirm(`¿Aumentar ${porcentaje}% a ${idsParaActualizar.length} productos?`);
+    if (!confirmar) return;
+
+    setActualizandoPrecios(true);
+    try {
+      const res = await fetch(`${API_URL}/api/productos/actualizar-precios`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: idsParaActualizar, porcentaje: parseFloat(porcentaje) })
+      });
+
+      if (res.ok) {
+        alert("✅ Precios actualizados");
+        setPorcentaje("");
+        cargarProductos();
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setActualizandoPrecios(false);
+    }
+  };
+
+  // --- SUBMIT BLINDADO (Para evitar el Error 500) ---
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setGuardando(true);
+
     try {
-      let imagenUrl = productoEditando?.imagenUrl || "";
-      
-      // Si hay un archivo nuevo, subirlo
-      if (formValues.file) {
-        imagenUrl = await uploadToCloudinary(formValues.file);
+      const formData = new FormData();
+      formData.append("nombre", formValues.nombre);
+
+      // Convertimos a número antes de enviar para evitar el 500
+      formData.append("precio", Number(formValues.precio));
+      formData.append("stock", Number(formValues.stock));
+
+      formData.append("categoria", formValues.categoria);
+      formData.append("ofertaDiaria", String(formValues.ofertaDiaria));
+
+      if (formValues.vencimiento) {
+        formData.append("vencimiento", formValues.vencimiento);
       }
 
-      const method = productoEditando ? "PUT" : "POST";
-      const url = productoEditando 
+      if (formValues.file) {
+        formData.append("imagen", formValues.file);
+      }
+
+      const isEditing = !!productoEditando;
+
+      // --- OJO AQUÍ: Verificamos el ID ---
+      if (isEditing && !productoEditando.id) {
+        console.error("No hay ID para editar!");
+        return alert("Error: El producto no tiene un ID válido.");
+      }
+
+      const url = isEditing
         ? `${API_URL}/api/productos/${productoEditando.id}`
         : `${API_URL}/api/productos`;
 
-      const formData = new FormData();
-      Object.entries(formValues).forEach(([key, value]) => {
-        if (key !== 'file') formData.append(key, value);
+      const res = await fetch(url, {
+        method: isEditing ? "PUT" : "POST",
+        body: formData
       });
-      formData.append("imagenUrl", imagenUrl);
 
-      const res = await fetch(url, { method, body: formData });
+      const data = await res.json();
 
       if (res.ok) {
-        alert(productoEditando ? "✅ Actualizado" : "✅ Agregado");
+        alert(isEditing ? "✅ ¡Actualizado!" : "✅ ¡Creado!");
         resetForm();
         cargarProductos();
+      } else {
+        // Si sigue el 500, este log nos dirá POR QUÉ (mira la consola de NestJS si podés)
+        console.error("Error del servidor:", data);
+        alert(`Error: ${data.message || "Error interno del servidor"}`);
       }
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      console.error("Error de red:", err);
+    } finally {
+      setGuardando(false);
+    }
   };
-
+  // --- FUNCIÓN DE RESET (Corregida para evitar el error de controlado/no controlado) ---
   const resetForm = () => {
     setProductoEditando(null);
-    setFormValues({ nombre: "", stock: "", precio: "", vencimiento: "", ofertaDiaria: false, file: null });
+    setFormValues({
+      nombre: "",
+      stock: "",
+      precio: "",
+      vencimiento: "", // React prefiere string vacío en lugar de null
+      categoria: "",
+      ofertaDiaria: false,
+      file: null
+    });
   };
 
-  // 3. Eliminar
-  const eliminarProducto = async (id) => {
-    if (!confirm("¿Seguro quieres eliminarlo?")) return;
-    await fetch(`${API_URL}/api/productos/${id}`, { method: "DELETE" });
-    cargarProductos();
-  };
-
-  // 4. Filtrado
   const productosFiltrados = productos.filter(p => {
     const cumpleBusqueda = p.nombre.toLowerCase().includes(busqueda.toLowerCase());
     if (filtro === "porVencer") return p.cercaVencimiento && cumpleBusqueda;
@@ -88,53 +155,95 @@ export default function Inventario() {
   });
 
   return (
-    <div className="p-6">
-      <h1 className="text-3xl font-bold text-white mb-8 text-center">Gestión de Inventario</h1>
+    <div className="p-6 max-w-7xl mx-auto min-h-screen">
+      <h1 className="text-3xl font-bold text-white mb-8 text-center uppercase tracking-tighter">
+        Panel de Inventario {guardando && <span className="text-orange-500 animate-pulse text-sm ml-2">(Guardando...)</span>}
+      </h1>
 
-      {/* Formulario (Componente Extraído) */}
-      <ProductForm 
+      <ProductForm
         onSubmit={handleSubmit}
         values={formValues}
         setValues={setFormValues}
         isEditing={!!productoEditando}
         onCancel={resetForm}
+        isLoading={guardando} // Asegúrate de recibir esta prop en ProductForm para deshabilitar el botón
       />
 
-      {/* Controles de Filtros */}
-      <div className="flex flex-wrap justify-center gap-4 my-8 bg-white/10 p-4 rounded-2xl backdrop-blur-md">
-        <input 
-          type="text" placeholder="Buscar..." 
-          className="p-2 rounded bg-white/20 text-white outline-none"
-          value={busqueda} onChange={(e) => setBusqueda(e.target.value)}
-        />
-        <select 
-          className="p-2 rounded bg-gray-800 text-white"
-          value={filtro} onChange={(e) => setFiltro(e.target.value)}
-        >
-          <option value="todos">Todos</option>
-          <option value="porVencer">Por Vencer</option>
-          <option value="oferta">En Oferta</option>
-        </select>
+      {/* Panel de Herramientas */}
+      <div className="bg-white/10 p-6 rounded-3xl backdrop-blur-md border border-white/10 my-8">
+        <div className="flex flex-wrap items-center justify-between gap-6">
+          <div className="flex gap-4">
+            <input
+              type="text" placeholder="🔍 Buscar..."
+              className="p-3 rounded-xl bg-white/5 text-white border border-white/10 outline-none focus:border-orange-500"
+              value={busqueda} onChange={(e) => setBusqueda(e.target.value)}
+            />
+            <select
+              className="p-3 rounded-xl bg-stone-800 text-white border border-white/10 outline-none"
+              value={filtro} onChange={(e) => setFiltro(e.target.value)}
+            >
+              <option value="todos">Todos</option>
+              <option value="porVencer">⚠️ Por Vencer</option>
+              <option value="oferta">🔥 Ofertas</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-3 bg-orange-500/10 p-2 rounded-2xl border border-orange-500/20">
+            <input
+              type="number" placeholder="% Aumento"
+              className="w-24 p-2 rounded-lg bg-stone-900 text-white border border-orange-500/50"
+              value={porcentaje} onChange={(e) => setPorcentaje(e.target.value)}
+              disabled={actualizandoPrecios}
+            />
+            <button
+              onClick={aplicarAumentoMasivo}
+              disabled={actualizandoPrecios}
+              className={`bg-orange-500 text-white px-4 py-2 rounded-lg font-bold transition ${actualizandoPrecios ? 'opacity-50 cursor-not-allowed' : 'hover:bg-orange-600'}`}
+            >
+              {actualizandoPrecios ? "Actualizando..." : "Actualizar Masivo"}
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Grilla de Inventario */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-        {productosFiltrados.map(prod => (
-          <InventoryItem 
-            key={prod.id} 
-            producto={prod} 
-            onEdit={(p) => {
-              setProductoEditando(p);
-              setFormValues({ ...p, file: null });
-            }}
-            onDelete={eliminarProducto}
-            onNotify={(p) => {
-               const msg = `Hola, el producto ${p.nombre} vence pronto.`;
-               window.open(`https://wa.me/5491121676940?text=${encodeURIComponent(msg)}`);
-            }}
-          />
-        ))}
-      </div>
+      {/* Grilla con Loading State */}
+      {cargandoLista ? (
+        <div className="flex justify-center items-center h-40">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-orange-500"></div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
+          {productosFiltrados.map(prod => (
+            <InventoryItem
+              key={prod.id}
+              producto={prod}
+              onEdit={(p) => {
+                setProductoEditando(p);
+                setFormValues({
+                  // Usamos || o ?? para asegurar que NUNCA pase un null al input
+                  nombre: p.nombre || "",
+                  stock: p.stock ?? "",
+                  precio: p.precio ?? "",
+                  vencimiento: p.vencimiento ? p.vencimiento.split('T')[0] : "",
+                  categoria: p.categoria || "Almacen", // Si es null, le pone Almacen
+                  ofertaDiaria: !!p.ofertaDiaria,
+                  file: null
+                });
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              onDelete={async (id) => {
+                if (!confirm("¿Seguro?")) return;
+                await fetch(`${API_URL}/api/productos/${id}`, { method: "DELETE" });
+                cargarProductos();
+              }}
+              onNotify={(p) => {
+                const msg = `Hola! Te aviso que el producto *${p.nombre}* está cerca de su fecha de vencimiento (${p.vencimiento}).`;
+                window.open(`https://wa.me/5491121676940?text=${encodeURIComponent(msg)}`);
+              }}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
