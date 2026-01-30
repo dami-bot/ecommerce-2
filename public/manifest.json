@@ -1,0 +1,16 @@
+{
+  "short_name": "TiendaDep",
+  "name": "Tienda Deportiva Online",
+  "icons": [
+    {
+      "src": "icon-runner.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#f97316",
+  "background_color": "#0c0a09"
+}
