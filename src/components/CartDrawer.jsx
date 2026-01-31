@@ -4,7 +4,7 @@ import { useCart } from "../context/CartContext"; // ✅ Importamos el hook
 export default function CartDrawer({ isOpen, onClose }) {
   // ✅ Extraemos todo del contexto, ya no dependemos de las props del padre
   const { carrito, setCarrito } = useCart();
-  
+  const [enviando, setEnviando] = useState(false);
   const [nombre, setNombre] = useState("");
   const [direccion, setDireccion] = useState("");
 
@@ -18,7 +18,7 @@ export default function CartDrawer({ isOpen, onClose }) {
         if (item.id === id) {
           const nuevaCant = item.cantidad + delta;
           // Validación: no bajar de 1 y no superar el stock si quisieras
-          if (nuevaCant < 1) return item; 
+          if (nuevaCant < 1) return item;
           return { ...item, cantidad: nuevaCant };
         }
         return item;
@@ -30,44 +30,61 @@ export default function CartDrawer({ isOpen, onClose }) {
     setCarrito(prev => prev.filter(item => item.id !== id));
   };
 
-  const enviarPedido = () => {
-    if (!nombre.trim() || !direccion.trim()) {
-      return alert("Por favor, completa tu nombre y dirección.");
+  const enviarPedido = async () => {
+    if (!nombre.trim() || !direccion.trim()) return alert("Completa los datos");
+    if (enviando) return; // Evita doble envío
+
+    setEnviando(true);
+
+    try {
+      // 1. Preparamos el mensaje primero
+      const nroPedido = Date.now().toString().slice(-6);
+      let mensaje = `*📦 PEDIDO NRO: #${nroPedido}*\n*👤 Cliente:* ${nombre}\n*📍 Dirección:* ${direccion}\n`;
+      mensaje += `--------------------------\n`;
+      carrito.forEach(item => {
+        mensaje += `• *${item.nombre}*\n  ${item.cantidad} x $${item.precio.toLocaleString()} = *$${(item.precio * item.cantidad).toLocaleString()}*\n\n`;
+      });
+      mensaje += `--------------------------\n*💰 TOTAL: $${total.toLocaleString()}*`;
+
+      const whatsappUrl = `https://wa.me/5491121676940?text=${encodeURIComponent(mensaje)}`;
+
+      // 2. Registramos en la base de datos
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/compras`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cliente: nombre,
+          direccion: direccion,
+          items: carrito.map(i => ({ id: i.id, nombre: i.nombre, precio: i.precio, cantidad: i.cantidad }))
+        })
+      });
+
+      if (!response.ok) throw new Error("Error en el servidor");
+
+      // 3. LA CLAVE: Cerramos todo ANTES de abrir la ventana
+      // Esto asegura que React limpie la UI mientras el navegador prepara el redirect
+      onClose();
+      setCarrito([]);
+      setNombre("");
+      setDireccion("");
+      setEnviando(false);
+
+      // 4. Salto final con un delay para que el "onClose" impacte en Tienda.jsx
+      setTimeout(() => {
+        window.location.href = whatsappUrl; // Usamos href en lugar de open para asegurar el cierre
+      }, 100);
+
+    } catch (error) {
+      setEnviando(false);
+      alert("⚠️ " + error.message);
     }
-
-    if (carrito.length === 0) return alert("El carrito está vacío.");
-
-    const nroPedido = Date.now().toString().slice(-6);
-    
-    let mensaje = `*PEDIDO NRO: #${nroPedido}*\n`;
-    mensaje += `*Cliente:* ${nombre}\n`;
-    mensaje += `*Dirección:* ${direccion}\n`;
-    mensaje += `--------------------------\n`;
-    
-    carrito.forEach(item => {
-      mensaje += `• ${item.cantidad}x ${item.nombre} - $${(item.precio * item.cantidad).toLocaleString()}\n`;
-    });
-
-    mensaje += `--------------------------\n`;
-    mensaje += `*TOTAL: $${total.toLocaleString()}*`;
-
-    const whatsappUrl = `https://wa.me/5491121676940?text=${encodeURIComponent(mensaje)}`;
-    window.open(whatsappUrl, "_blank");
-
-    // LIMPIAR Y CERRAR
-    setCarrito([]);
-    setNombre("");
-    setDireccion("");
-    onClose();
   };
-
-  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-[100] flex justify-end">
       {/* Overlay oscuro */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      
+
       {/* Panel del Carrito */}
       <div className="relative w-full max-w-md bg-stone-900 h-full shadow-2xl flex flex-col p-6 border-l border-white/10">
         <div className="flex justify-between items-center mb-6">
@@ -87,7 +104,7 @@ export default function CartDrawer({ isOpen, onClose }) {
                   <h4 className="text-white font-bold text-sm leading-tight">{item.nombre}</h4>
                   <p className="text-orange-500 font-bold text-xs mt-1">${item.precio.toLocaleString()}</p>
                 </div>
-                
+
                 {/* Controles de Cantidad */}
                 <div className="flex items-center gap-2 bg-black/30 rounded-lg p-1">
                   <button onClick={() => modificarCantidad(item.id, -1)} className="w-6 h-6 text-white hover:bg-white/10 rounded">-</button>
@@ -107,12 +124,12 @@ export default function CartDrawer({ isOpen, onClose }) {
         {carrito.length > 0 && (
           <div className="space-y-3 mb-6 bg-white/5 p-4 rounded-2xl">
             <h3 className="text-white text-xs font-bold uppercase tracking-widest mb-2">Datos de Entrega</h3>
-            <input 
+            <input
               type="text" placeholder="Tu nombre completo"
               className="w-full p-3 rounded-xl bg-stone-800 text-white text-sm border border-white/10 outline-none focus:border-orange-500"
               value={nombre} onChange={(e) => setNombre(e.target.value)}
             />
-            <input 
+            <input
               type="text" placeholder="Dirección de entrega"
               className="w-full p-3 rounded-xl bg-stone-800 text-white text-sm border border-white/10 outline-none focus:border-orange-500"
               value={direccion} onChange={(e) => setDireccion(e.target.value)}
@@ -126,8 +143,8 @@ export default function CartDrawer({ isOpen, onClose }) {
             <span className="text-gray-400 font-medium">Total Estimado</span>
             <span className="text-2xl font-bold text-white">${total.toLocaleString()}</span>
           </div>
-          
-          <button 
+
+          <button
             onClick={enviarPedido}
             disabled={carrito.length === 0}
             className="w-full py-4 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-700 text-white font-bold rounded-2xl transition shadow-lg shadow-orange-500/20"

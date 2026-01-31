@@ -8,15 +8,15 @@ import { toast } from 'react-hot-toast'; // ✅ Importamos toast
 const API_URL = import.meta.env.VITE_API_URL;
 
 export default function Tienda() {
-  const { carrito, agregarAlCarrito } = useCart(); 
+  const { carrito, agregarAlCarrito } = useCart();
 
-  const [productos, setProductos] = useState([]);  
+  const [productos, setProductos] = useState([]);
   const [busqueda, setBusqueda] = useState("");
   const [categoriaSel, setCategoriaSel] = useState("Todos"); // ✅ Estado para categoría
   const [openCart, setOpenCart] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  
+
   const limit = 20;
 
   // Lista de categorías (Asegurate que coincidan con las de tu DB)
@@ -95,11 +95,10 @@ export default function Tienda() {
             <button
               key={cat}
               onClick={() => setCategoriaSel(cat)}
-              className={`px-5 py-2 rounded-full text-sm font-bold transition-all ${
-                categoriaSel === cat 
-                ? "bg-orange-500 text-white shadow-lg shadow-orange-500/40 scale-105" 
-                : "bg-white/5 text-gray-400 hover:bg-white/10"
-              }`}
+              className={`px-5 py-2 rounded-full text-sm font-bold transition-all ${categoriaSel === cat
+                  ? "bg-orange-500 text-white shadow-lg shadow-orange-500/40 scale-105"
+                  : "bg-white/5 text-gray-400 hover:bg-white/10"
+                }`}
             >
               {cat}
             </button>
@@ -111,10 +110,10 @@ export default function Tienda() {
       {productosFiltrados.length > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
           {productosFiltrados.map(prod => (
-            <ProductCard 
-              key={prod.id} 
-              producto={prod} 
-              agregarAlCarrito={manejarAgregar} 
+            <ProductCard
+              key={prod.id}
+              producto={prod}
+              agregarAlCarrito={manejarAgregar}
             />
           ))}
         </div>
@@ -124,10 +123,14 @@ export default function Tienda() {
         </div>
       )}
 
-      <CartDrawer isOpen={openCart} onClose={() => setOpenCart(false)} />
-
+      {openCart && (
+        <CartDrawer
+          isOpen={openCart}
+          onClose={() => setOpenCart(false)}
+        />
+      )}
       {/* Botón flotante para móviles */}
-      <button 
+      <button
         onClick={() => setOpenCart(true)}
         className="fixed bottom-6 right-6 bg-orange-500 text-white p-4 rounded-full shadow-2xl z-40 lg:hidden font-bold active:scale-90 transition-transform"
       >

@@ -153,97 +153,133 @@ export default function Inventario() {
     if (filtro === "oferta") return p.ofertaDiaria && cumpleBusqueda;
     return cumpleBusqueda;
   });
+  // 1. Cálculos (antes del return del componente)
+  const totalProductos = productos.length;
+  const productosBajoStock = productos.filter(p => p.stock <= 5).length;
+  const valorTotalInventario = productos.reduce((acc, p) => acc + (p.precio * p.stock), 0);
 
-  return (
-    <div className="p-6 max-w-7xl mx-auto min-h-screen">
-      <h1 className="text-3xl font-bold text-white mb-8 text-center uppercase tracking-tighter">
-        Panel de Inventario {guardando && <span className="text-orange-500 animate-pulse text-sm ml-2">(Guardando...)</span>}
-      </h1>
+ return (
+  <div className="p-6 max-w-7xl mx-auto min-h-screen">
+    <h1 className="text-3xl font-bold text-white mb-8 text-center uppercase tracking-tighter">
+      Panel de Inventario {guardando && <span className="text-orange-500 animate-pulse text-sm ml-2">(Guardando...)</span>}
+    </h1>
 
-      <ProductForm
-        onSubmit={handleSubmit}
-        values={formValues}
-        setValues={setFormValues}
-        isEditing={!!productoEditando}
-        onCancel={resetForm}
-        isLoading={guardando} // Asegúrate de recibir esta prop en ProductForm para deshabilitar el botón
-      />
+    <ProductForm
+      onSubmit={handleSubmit}
+      values={formValues}
+      setValues={setFormValues}
+      isEditing={!!productoEditando}
+      onCancel={resetForm}
+      isLoading={guardando}
+    />
 
-      {/* Panel de Herramientas */}
-      <div className="bg-white/10 p-6 rounded-3xl backdrop-blur-md border border-white/10 my-8">
-        <div className="flex flex-wrap items-center justify-between gap-6">
-          <div className="flex gap-4">
-            <input
-              type="text" placeholder="🔍 Buscar..."
-              className="p-3 rounded-xl bg-white/5 text-white border border-white/10 outline-none focus:border-orange-500"
-              value={busqueda} onChange={(e) => setBusqueda(e.target.value)}
-            />
-            <select
-              className="p-3 rounded-xl bg-stone-800 text-white border border-white/10 outline-none"
-              value={filtro} onChange={(e) => setFiltro(e.target.value)}
-            >
-              <option value="todos">Todos</option>
-              <option value="porVencer">⚠️ Por Vencer</option>
-              <option value="oferta">🔥 Ofertas</option>
-            </select>
-          </div>
-
-          <div className="flex items-center gap-3 bg-orange-500/10 p-2 rounded-2xl border border-orange-500/20">
-            <input
-              type="number" placeholder="% Aumento"
-              className="w-24 p-2 rounded-lg bg-stone-900 text-white border border-orange-500/50"
-              value={porcentaje} onChange={(e) => setPorcentaje(e.target.value)}
-              disabled={actualizandoPrecios}
-            />
-            <button
-              onClick={aplicarAumentoMasivo}
-              disabled={actualizandoPrecios}
-              className={`bg-orange-500 text-white px-4 py-2 rounded-lg font-bold transition ${actualizandoPrecios ? 'opacity-50 cursor-not-allowed' : 'hover:bg-orange-600'}`}
-            >
-              {actualizandoPrecios ? "Actualizando..." : "Actualizar Masivo"}
-            </button>
-          </div>
-        </div>
+    {/* 📊 DASHBOARD DE ESTADÍSTICAS (Ahora fuera y arriba) */}
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 my-8">
+      {/* Card Total */}
+      <div className="bg-white/5 border border-white/10 p-4 rounded-2xl backdrop-blur-sm">
+        <p className="text-gray-400 text-xs uppercase font-bold tracking-wider">Total Productos</p>
+        <h3 className="text-2xl font-black text-white">{totalProductos}</h3>
       </div>
 
-      {/* Grilla con Loading State */}
-      {cargandoLista ? (
-        <div className="flex justify-center items-center h-40">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-orange-500"></div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
-          {productosFiltrados.map(prod => (
-            <InventoryItem
-              key={prod.id}
-              producto={prod}
-              onEdit={(p) => {
-                setProductoEditando(p);
-                setFormValues({
-                  // Usamos || o ?? para asegurar que NUNCA pase un null al input
-                  nombre: p.nombre || "",
-                  stock: p.stock ?? "",
-                  precio: p.precio ?? "",
-                  vencimiento: p.vencimiento ? p.vencimiento.split('T')[0] : "",
-                  categoria: p.categoria || "Almacen", // Si es null, le pone Almacen
-                  ofertaDiaria: !!p.ofertaDiaria,
-                  file: null
-                });
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
-              onDelete={async (id) => {
-                if (!confirm("¿Seguro?")) return;
-                await fetch(`${API_URL}/api/productos/${id}`, { method: "DELETE" });
-                cargarProductos();
-              }}
-              onNotify={(p) => {
-                const msg = `Hola! Te aviso que el producto *${p.nombre}* está cerca de su fecha de vencimiento (${p.vencimiento}).`;
-                window.open(`https://wa.me/5491121676940?text=${encodeURIComponent(msg)}`);
-              }}
-            />
-          ))}
-        </div>
-      )}
+      {/* Card Bajo Stock */}
+      <div className={`border p-4 rounded-2xl backdrop-blur-sm transition-colors ${
+        productosBajoStock > 0 ? 'bg-red-500/10 border-red-500/50' : 'bg-white/5 border-white/10'
+      }`}>
+        <p className="text-gray-400 text-xs uppercase font-bold tracking-wider">⚠️ Bajo Stock</p>
+        <h3 className={`text-2xl font-black ${productosBajoStock > 0 ? 'text-red-500' : 'text-white'}`}>
+          {productosBajoStock}
+        </h3>
+      </div>
+
+      {/* Card Valor Invertido */}
+      <div className="bg-white/5 border border-white/10 p-4 rounded-2xl backdrop-blur-sm">
+        <p className="text-gray-400 text-xs uppercase font-bold tracking-wider">Capital en Stock</p>
+        <h3 className="text-2xl font-black text-emerald-400">
+          ${valorTotalInventario.toLocaleString('es-AR')}
+        </h3>
+      </div>
     </div>
-  );
-}
+
+    {/* 🛠️ PANEL DE HERRAMIENTAS (Buscador y Filtros) */}
+    <div className="bg-white/10 p-6 rounded-3xl backdrop-blur-md border border-white/10 mb-8">
+      <div className="flex flex-wrap items-center justify-between gap-6">
+        <div className="flex flex-wrap gap-4 flex-1">
+          <input
+            type="text" 
+            placeholder="🔍 Buscar..."
+            className="flex-1 min-w-[200px] p-3 rounded-xl bg-white/5 text-white border border-white/10 outline-none focus:border-orange-500"
+            value={busqueda} 
+            onChange={(e) => setBusqueda(e.target.value)}
+          />
+          <select
+            className="p-3 rounded-xl bg-stone-800 text-white border border-white/10 outline-none cursor-pointer"
+            value={filtro} 
+            onChange={(e) => setFiltro(e.target.value)}
+          >
+            <option value="todos">Todos</option>
+            <option value="bajoStock">📉 Bajo Stock</option> {/* Agregamos esta opción */}
+            <option value="porVencer">⚠️ Por Vencer</option>
+            <option value="oferta">🔥 Ofertas</option>
+          </select>
+        </div>
+
+        {/* Sección Aumento Masivo */}
+        <div className="flex items-center gap-3 bg-orange-500/10 p-2 rounded-2xl border border-orange-500/20">
+          <input
+            type="number" 
+            placeholder="% Aumento"
+            className="w-24 p-2 rounded-lg bg-stone-900 text-white border border-orange-500/50"
+            value={porcentaje} 
+            onChange={(e) => setPorcentaje(e.target.value)}
+            disabled={actualizandoPrecios}
+          />
+          <button
+            onClick={aplicarAumentoMasivo}
+            disabled={actualizandoPrecios}
+            className={`bg-orange-500 text-white px-4 py-2 rounded-lg font-bold transition ${actualizandoPrecios ? 'opacity-50 cursor-not-allowed' : 'hover:bg-orange-600'}`}
+          >
+            {actualizandoPrecios ? "Actualizando..." : "Actualizar Masivo"}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    {/* Grilla de Productos */}
+    {cargandoLista ? (
+      <div className="flex justify-center items-center h-40">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-orange-500"></div>
+      </div>
+    ) : (
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
+        {productosFiltrados.map(prod => (
+          <InventoryItem
+            key={prod.id}
+            producto={prod}
+            onEdit={(p) => {
+              setProductoEditando(p);
+              setFormValues({
+                nombre: p.nombre || "",
+                stock: p.stock ?? "",
+                precio: p.precio ?? "",
+                vencimiento: p.vencimiento ? p.vencimiento.split('T')[0] : "",
+                categoria: p.categoria || "Almacen",
+                ofertaDiaria: !!p.ofertaDiaria,
+                file: null
+              });
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            onDelete={async (id) => {
+              if (!confirm("¿Seguro?")) return;
+              await fetch(`${API_URL}/api/productos/${id}`, { method: "DELETE" });
+              cargarProductos();
+            }}
+            onNotify={(p) => {
+              const msg = `Hola! Te aviso que el producto *${p.nombre}* está cerca de su fecha de vencimiento.`;
+              window.open(`https://wa.me/5491121676940?text=${encodeURIComponent(msg)}`);
+            }}
+          />
+        ))}
+      </div>
+    )}
+  </div>
+);}
