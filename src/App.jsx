@@ -5,6 +5,7 @@ import Reportes from './pages/Reportes';
 import Navbar from './components/Navbar';
 import { CartProvider } from './context/CartContext'
 import { Toaster } from 'react-hot-toast';
+import TiendaDeportiva from './pages/TiendaDeportiva';
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
             <Route path="/" element={<Tienda />} />
             <Route path="/admin/inventario" element={<Inventario />} />
             <Route path="/admin/reportes" element={<Reportes />} />
+            <Route path="/deportes" element={<TiendaDeportiva />} />
           </Routes>
         </main>
       </Router>
