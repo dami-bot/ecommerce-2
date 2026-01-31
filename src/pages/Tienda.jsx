@@ -4,11 +4,13 @@ import { OfferCarousel } from "../components/OfferCarousel";
 import CartDrawer from "../components/CartDrawer";
 import { useCart } from '../context/CartContext';
 import { toast } from 'react-hot-toast'; // ✅ Importamos toast
+import ProductSkeleton from "../components/ProductSkeleton";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
 export default function Tienda() {
   const { carrito, agregarAlCarrito } = useCart();
+  
 
   const [productos, setProductos] = useState([]);
   const [busqueda, setBusqueda] = useState("");

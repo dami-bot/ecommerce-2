@@ -151,6 +151,7 @@ export default function Inventario() {
     const cumpleBusqueda = p.nombre.toLowerCase().includes(busqueda.toLowerCase());
     if (filtro === "porVencer") return p.cercaVencimiento && cumpleBusqueda;
     if (filtro === "oferta") return p.ofertaDiaria && cumpleBusqueda;
+    if (filtro === "bajoStock") return p.stock <= 5 && cumpleBusqueda;
     return cumpleBusqueda;
   });
   // 1. Cálculos (antes del return del componente)
