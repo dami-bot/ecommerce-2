@@ -31,13 +31,24 @@ const MarketplaceAdmin = () => {
   // 2. Marcar como vendido
   const marcarVendido = async (id) => {
     try {
-      const res = await fetch(`${API_URL}/${id}/vender`, { method: 'PATCH' });
+      // 🎯 Ahora golpeamos la ruta correcta: /marketplace/8/vender
+      const res = await fetch(`${API_URL}/${id}/vender`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' }
+        // No hace falta mandar body porque el backend ya sabe que 'vender' implica cambiar el estado
+      });
+
       if (res.ok) {
-        await cargarProductos();
-        alert("¡Producto marcado como vendido! 🚀");
+        await cargarProductos(); // Refrescamos la lista automáticamente
+        alert("¡Vendido! 🚀");
+      } else {
+        const errorData = await res.json();
+        console.error("Error detalle:", errorData);
+        alert("No se pudo actualizar el estado. Revisa si el backend terminó de subir a Railway.");
       }
     } catch (error) {
-      console.error("Error al marcar como vendido:", error);
+      console.error("Error de conexión:", error);
+      alert("Error de conexión");
     }
   };
 
@@ -79,14 +90,14 @@ const MarketplaceAdmin = () => {
       <h1 style={styles.title}>Panel Marketplace</h1>
 
       {/* Formulario: ahora recibe el producto a editar */}
-      <MarketplaceForm 
-        onProductCreated={cargarProductos} 
+      <MarketplaceForm
+        onProductCreated={cargarProductos}
         productoAEditar={productoAEditar}
         setProductoAEditar={setProductoAEditar}
       />
 
       <h2 style={styles.subTitle}>Gestión de Inventario</h2>
-      
+
       <div style={styles.tableContainer}>
         <table style={styles.table}>
           <thead>
@@ -113,11 +124,14 @@ const MarketplaceAdmin = () => {
                   <div style={styles.vendedorBox}>
                     <span>{p.vendedorNombre}</span>
                     <br />
-                    <small style={{ color: '#aaa' }}>{p.vendedorCelular || "Sin número"}</small>
-                    {p.vendedorCelular && (
-                      <a 
-                        href={`https://wa.me/${p.vendedorCelular.replace(/\D/g, '')}`} 
-                        target="_blank" 
+                    {/* Mostramos el número de la DB */}
+                    <small style={{ color: '#aaa' }}>{p.vendedorTelefono || "Sin número"}</small>
+
+                    {/* 🎯 CORRECCIÓN AQUÍ: Usamos vendedorTelefono para el link de WhatsApp */}
+                    {p.vendedorTelefono && (
+                      <a
+                        href={`https://wa.me/${p.vendedorTelefono.toString().replace(/\D/g, '')}`}
+                        target="_blank"
                         rel="noreferrer"
                         style={styles.waLink}
                       >
@@ -133,7 +147,7 @@ const MarketplaceAdmin = () => {
                 </td>
                 <td style={styles.actions}>
                   <button onClick={() => handleEditar(p)} style={styles.editBtn}>✏️</button>
-                  
+
                   {p.estado === 'vendido' ? (
                     <button onClick={() => reactivarProducto(p.id)} style={styles.reactivarBtn}>🔄</button>
                   ) : (

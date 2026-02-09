@@ -1,43 +1,106 @@
-export const Navbar = () => {
+import React from 'react';
+
+const Navbar = () => {
   return (
-    <nav style={navStyles.nav}>
-      <div style={navStyles.logoContainer}>
-        <div style={navStyles.logoIcon}>M</div>
-        <span style={navStyles.logoText}>Market<span style={{color: '#ff6b00'}}>Plus</span></span>
-      </div>
-      <div style={navStyles.links}>
-        <span style={navStyles.tagline}>Distribuidora de Usados</span>
+    <nav style={styles.navbar}>
+      <div style={styles.navContainer}>
+        <div style={styles.logo}>
+          <span style={styles.logoText}>MARKET</span>
+          <span style={styles.logoDot}>.</span>
+          <span style={styles.logoSub}>ADMIN</span>
+        </div>
+        
+        <ul style={styles.navLinks}>
+          <li style={styles.li}><a href="#productos" style={styles.link}>Productos</a></li>
+          <li style={styles.li}><a href="#ventas" style={styles.link}>Ventas</a></li>
+          <li style={styles.li}>
+            <button style={styles.statusBadge}>Online</button>
+          </li>
+        </ul>
       </div>
     </nav>
   );
 };
 
-const navStyles = {
-  nav: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '15px 40px',
-    background: 'rgba(255, 255, 255, 0.8)',
-    backdropFilter: 'blur(10px)',
+const styles = {
+  navbar: {
+    // 📌 Esto lo deja fijo arriba
     position: 'sticky',
     top: 0,
     zIndex: 1000,
-    boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
-  },
-  logoContainer: { display: 'flex', alignItems: 'center', gap: '10px' },
-  logoIcon: {
-    background: '#ff6b00',
-    color: 'white',
-    width: '35px',
-    height: '35px',
+    
+    // ✨ Efecto "Glassmorphism"
+    background: 'rgba(26, 28, 34, 0.85)', 
+    backdropFilter: 'blur(10px)', 
+    WebkitBackdropFilter: 'blur(10px)',
+    
+    borderBottom: '1px solid #333',
+    padding: '0 20px',
+    height: '70px',
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: '8px',
-    fontWeight: 'bold',
-    fontSize: '20px'
+    transition: 'all 0.3s ease',
   },
-  logoText: { fontSize: '22px', fontWeight: '800', color: '#333', letterSpacing: '-0.5px' },
-  tagline: { fontSize: '14px', color: '#777', fontWeight: '500' }
+  navContainer: {
+    maxWidth: '1200px',
+    margin: '0 auto',
+    width: '100%',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  logo: {
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'baseline',
+    gap: '2px'
+  },
+  logoText: {
+    color: '#fff',
+    fontSize: '22px',
+    fontWeight: '800',
+    letterSpacing: '1px'
+  },
+  logoDot: {
+    color: '#ff6b00',
+    fontSize: '28px',
+    fontWeight: 'bold'
+  },
+  logoSub: {
+    color: '#aaa',
+    fontSize: '14px',
+    fontWeight: '400',
+    textTransform: 'uppercase'
+  },
+  navLinks: {
+    display: 'flex',
+    alignItems: 'center',
+    listStyle: 'none',
+    gap: '25px',
+    margin: 0,
+    padding: 0,
+  },
+  li: {
+    margin: 0
+  },
+  link: {
+    color: '#eee',
+    textDecoration: 'none',
+    fontSize: '15px',
+    fontWeight: '500',
+    transition: 'color 0.2s',
+    '&:hover': { color: '#ff6b00' } // Nota: Esto requiere CSS real o un evento onMouseEnter
+  },
+  statusBadge: {
+    background: 'rgba(37, 211, 102, 0.1)',
+    color: '#25D366',
+    border: '1px solid #25D366',
+    padding: '5px 12px',
+    borderRadius: '20px',
+    fontSize: '12px',
+    fontWeight: 'bold',
+    textTransform: 'uppercase'
+  }
 };
+
+export default Navbar;
