@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { MarketplaceForm } from '../components/marketplace/MarketPlaceForm';
+import { MarketplaceForm } from '../components/marketplace/XForm';
 
 const MarketplaceAdmin = () => {
   const [productos, setProductos] = useState([]);
