@@ -38,7 +38,7 @@ const MarketplaceShop = () => {
 
       <header style={styles.hero}>
         <h1 style={styles.mainTitle}>Marketplace de Usados</h1>
-        <p style={styles.subTitle}>Equipamiento con historia, listo para producir.</p>
+        <p style={styles.subTitle}>Equipamiento con historia,al alcance de todos.</p>
         
         <div style={styles.searchWrapper}>
           <input 
